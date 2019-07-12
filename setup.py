@@ -9,4 +9,7 @@ setup(name='fpcal',
       author_email='blah@nofuckingway.hotmail',
       url='https://github.com/dubiousbreakfast/fpcal',
       packages=find_packages(),
+      install_requires=['pandas <= 24.0', 'matplotlib < 3.0',
+                        'corner', 'emcee>2.2.0', 'seaborn']
      )
+
