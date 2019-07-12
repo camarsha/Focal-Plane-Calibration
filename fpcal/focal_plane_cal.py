@@ -1,3 +1,4 @@
+from __future__ import print_function
 import re
 import numpy as np
 from scipy import optimize
@@ -9,6 +10,12 @@ import string
 import emcee
 import corner
 from scipy import interpolate
+
+# Python 2.7 compatibility
+try:
+    input = raw_input
+except NameError:
+    pass
 
 """
 Program is intended for use with TUNL Enge Splitpole.
@@ -148,21 +155,6 @@ class Focal_Plane_Fit():
         self.poly_model = {}  # dict of mcmc objects for fits
         self.sys_unc = 0.0  # systematic uncertainty for peak centroid widths
 
-    def add_reaction(self):
-        # take user input for reaction
-        a = str(input('Enter projectile \n'))
-        A = str(input('Enter target \n'))
-        b = str(input('Enter detected particle \n'))
-        B = str(input('Enter residual particle \n'))
-        B_field = float(input('What was the B field setting? \n'))
-        E_lab = float(input('Beam energy? \n'))
-        E_lab_unc = float(input('Beam energy uncertainty? \n'))
-        theta = float(input('What is the lab angle? \n'))
-        self.reactions[len(list(self.reactions.keys()))] = Reaction(a, A, b, B, B_field,
-                                                              E_lab, E_lab_unc, theta)
-        print('Reaction', (len(list(self.reactions.keys()))-1),'has been defined as '+a+' + '+A+' -> '+B+' + '+b)
-        print('E_beam =', E_lab,'+/- MeV', E_lab_unc, 'With B-Field', B_field,'T') 
-
     def add_point(self, reaction, level,
                   level_unc, channel, channel_unc):
         # get rho and uncertainty
@@ -172,15 +164,6 @@ class Focal_Plane_Fit():
         channel = measured_value(channel, channel_unc)
         point = {'rho': rho, 'channel': channel}
         self.points.append(point)
-
-    # add a calibration point which has rho with an associated channel value
-    def input_point(self):
-        reaction = int(input('Which reaction(0...n)? \n'))
-        channel = float(input('Enter the peak channel number. \n'))
-        channel_unc = float(input('What is the centroid uncertainty? \n'))
-        level = float(input('Enter the peak energy (MeV). \n'))
-        level_unc = float(input('Enter the peak uncertainty (MeV). \n'))
-        self.add_point(reaction, level, level_unc, channel, channel_unc)
 
     def create_distributions(self, reaction):
         reaction_variables = vars(reaction)  # get variables from reaction
@@ -288,11 +271,6 @@ class Focal_Plane_Fit():
         new_unc = np.sqrt((dpoly*x_unc)**2.0+y_unc**2.0) #add in quadrature
         return new_unc
     
-    def input_peak(self):
-        channel = float(input("Enter channel number."))
-        channel_unc = float(input("Enter channel uncertainty."))
-        channel = measured_value(channel,channel_unc)
-        self.peak_energy(channel)
         
     #finally given channel number use a fit to give energy         
     def peak_energy(self, reaction, channel, fit_order=2, kde_samples=50000):
@@ -514,7 +492,11 @@ class Ensemble_Fit(Focal_Plane_Fit):
             Ex = reverse_rho(a, A, b, B, B_field, E_lab, rho, q, theta)
             E_ci = self.credability_interval(Ex)
             # Moving to confidence intervals.
-            print('Channel', format(channel['value'], '.1f'), 'Energy :', format(E_ci[0], '.4f'), '+/-', format(E_ci[1], '.4f')+'/'+format(E_ci[2], '.4f'), 'E_mu ='+format(Ex.mean(), '.4f'), 'E_sigma ='+format(Ex.std(), '.4f'))  
+            print('Channel', format(channel['value'], '.1f'),
+                  'Energy :', format(E_ci[0], '.4f'),
+                  '+/-', format(E_ci[1], '.4f')+'/'+format(E_ci[2], '.4f'),
+                  'E_mu ='+format(Ex.mean(), '.4f'),
+                  'E_sigma ='+format(Ex.std(), '.4f'))  
             # Gather info into dictionary
             output = {'Reaction': reaction_number,'Rho': measured_value(mu,sig),
                       'E_level': E_ci,'Channel':channel,
