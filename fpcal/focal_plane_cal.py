@@ -4,7 +4,7 @@ import numpy as np
 from scipy import optimize
 from scipy import stats
 import pandas as pd
-from . import residual_plot
+from .residual_plot import residual_plot
 import matplotlib.pyplot as plt
 import string
 import emcee
