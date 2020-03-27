@@ -10,6 +10,8 @@ import string
 import emcee
 import corner
 from scipy import interpolate
+import pkg_resources
+
 
 # Python 2.7 compatibility
 try:
@@ -28,7 +30,9 @@ Caleb Marshall, TUNL/NCSU, 2017
 u_convert = 931.4940954
 
 # read in the mass table with the format provided
-pretty_mass = '/home/caleb/Research/Longland/Code/AnalysisScripts/EnergyCalibration/pretty.mas16' # pretty mass path
+
+# pretty mass path
+pretty_mass = pkg_resources.resource_filename('fpcal', 'pretty.mas16')
 mass_table = pd.read_csv(pretty_mass, sep='\s+')  # Read in the masses
 
 
@@ -623,4 +627,37 @@ class Ensemble_Fit(Focal_Plane_Fit):
                      '50_percentile', 'upper_ci', 'lower_ci']]
         df_new.to_csv(filename, sep=sep, index=False)
 
+    def predict_location(self, reaction, order, E_level, E_level_unc):
+        """
+        Invert the fit function to predict location of a given excited 
+        state.
+        """
+
+        rho, rho_unc = self.calc_rho(reaction,E_level,E_level_unc)
         
+        # Samples of the fit.
+        coeff_samples = self.samples[:, 0:(order+1)]
+        
+        # Now draw the random rho samples
+        rho_samples = stats.norm.rvs(loc=rho,
+                                     scale=rho_unc,
+                                     size=coeff_samples.shape[0])
+        
+        x_values = []
+        for i, j in zip(coeff_samples, rho_samples):
+            # Root finding, so subtract rho from the last coefficient.
+            intercept = np.array([i[-1] - j])
+            coeff_for_root_find = np.concatenate((i[:-1], intercept))
+            root = np.roots(coeff_for_root_find)
+            # Only give real roots
+            reals = root.real[abs(root.imag)<1e-10]
+            # Channel values are still shifted.
+            reals = reals + self.x_mu
+            # Now find the solution that is in the ADC range
+            reals = reals[(reals > 0.0) & (reals < 4096.0)] 
+            x_values.append(reals)
+            
+        x_values = np.asarray(x_values)
+        # Include the estimated additional uncertainty. 
+        print(x_values.mean(), np.sqrt(x_values.std()**2.0 + self.sys_unc**2.0))
+        return x_values
